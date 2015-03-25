@@ -5,10 +5,13 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
+import android.view.View;
 import android.widget.FrameLayout;
 
 
 public class MainActivity extends ActionBarActivity {
+
+    private CameraSurfaceView  mCameraSurfaceView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -19,9 +22,9 @@ public class MainActivity extends ActionBarActivity {
 
 
     private void initView() {
-        CameraSurfaceView  cameraSurfaceView = new CameraSurfaceView(this);
+        mCameraSurfaceView = new CameraSurfaceView(this);
         FrameLayout frameLayout = (FrameLayout) findViewById(R.id.camera_preview);
-        frameLayout.addView(cameraSurfaceView);
+        frameLayout.addView(mCameraSurfaceView);
     }
 
     @Override
@@ -44,5 +47,22 @@ public class MainActivity extends ActionBarActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    public void capturePicture(View v) {
+
+    }
+
+    private int mode = 1;
+
+    public void changeCamera(View v) {
+        if (mode == 1) {
+            mCameraSurfaceView.openBackCamera();
+            mode = 2;
+        }
+        else {
+            mCameraSurfaceView.openFrontCamera();
+            mode = 1;
+        }
     }
 }

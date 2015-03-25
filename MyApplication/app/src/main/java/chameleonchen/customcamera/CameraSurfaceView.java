@@ -13,49 +13,6 @@ import android.view.SurfaceView;
  * Created by ChameleonChen on 15/3/25.
  */
 public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
-    ////////////////////////////////////////////////////////////////////////
-    /// Camera
-    ////////////////////////////////////////////////////////////////////////
-
-    /** 相机对象 */
-    private Camera mCamera;
-
-    /**
-     * 获取{@link android.hardware.Camera}实例。
-     * @return
-     */
-    public Camera getCameraInstance() {
-        Camera c = null;
-
-        if (!checkCameraHardware(mContext)) {
-            return null;    // 如果手机没有相机则返回null
-        }
-
-        try {
-            c = Camera.open(); // attempt to get a Camera instance
-        }
-        catch (Exception e){
-            // Camera is not available (in use or does not exist)
-            Log.e("CameraSurfaceView", e.getMessage());
-        }
-        return c; // returns null if camera is unavailable
-    }
-
-    /**
-     * 检查手机设备是否有相机
-     * @param context
-     * @return
-     */
-    private boolean checkCameraHardware(Context context) {
-        if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)){
-            // this device has a camera
-            return true;
-        } else {
-            // no camera on this device
-            return false;
-        }
-    }
-    ////////////////////////////////////////////////////////////////////////
 
     private SurfaceHolder mSurfaceHolder;
 
@@ -63,6 +20,8 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 
     public CameraSurfaceView(Context context) {
         super(context);
+
+        getCameraId();
 
         mContext = context;
 
@@ -83,11 +42,6 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
         mCamera = camera;
     }
 
-    ////////////////////////////////////////////////////////////////////////
-    /**
-     * 实现{@link android.view.SurfaceHolder.Callback} 接口定义的回调函数
-     */
-    ////////////////////////////////////////////////////////////////////////
     /* 【SurfaceView 绘图的原理】
      *  我们都知道Android是在应用程序的主线程更新UI的，用主线程渲染UI适合UI更新频率不是很高的情况下，如果需要更新
      *  的频率很高，那么利用主线程来完成这件事情显然是不科学的。
@@ -99,13 +53,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        try {
-            mCamera.setPreviewDisplay(mSurfaceHolder);
-            mCamera.setDisplayOrientation(getPreviewDegree((Activity) mContext));
-            mCamera.startPreview();
-        } catch (Exception e) {
-            // 失败
-        }
+        previewCamera();
     }
 
     @Override
@@ -120,12 +68,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 
         }
 
-        try {
-            mCamera.setPreviewDisplay(mSurfaceHolder);
-            mCamera.startPreview();
-        } catch (Exception e) {
-            // 失败
-        }
+        previewCamera();
     }
 
     @Override
@@ -133,8 +76,21 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
         mCamera.release();
     }
 
-    ////////////////////////////////////////////////////////////////////////
+    private void previewCamera() {
+        try {
+            mCamera.setPreviewDisplay(mSurfaceHolder);
+            mCamera.setDisplayOrientation(getPreviewDegree((Activity) mContext));
+            mCamera.startPreview();
+        } catch (Exception e) {
+            // 失败
+        }
+    }
 
+    /**
+     * 获取相机与手机方向匹配时的角度
+     * @param activity
+     * @return
+     */
     public static int getPreviewDegree(Activity activity) {
         // 获得手机的方向
         int rotation = activity.getWindowManager().getDefaultDisplay()
@@ -157,4 +113,108 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
         }
         return degree;
     }
+
+    ////////////////////////////////////////////////////////////////////////
+    /// Camera
+    ////////////////////////////////////////////////////////////////////////
+
+    /** 相机对象 */
+    private Camera mCamera;
+
+    /**
+     * @see #getCameraInstance(int)
+     * @return
+     */
+    private Camera getCameraInstance() {
+        return getCameraInstance(idOfFacingFront);      // 获取前置摄像头
+    }
+
+    /**
+     * 获取对应ID的Camera
+     * @param cameraId
+     * @return
+     */
+    private Camera getCameraInstance(int cameraId) {
+
+        Camera c = null;
+
+        if (!checkCameraHardware(mContext)) {
+            return null;    // 如果手机没有相机则返回null
+        }
+
+        try {
+            c = Camera.open(cameraId); // attempt to get a Camera instance
+        }
+        catch (Exception e){
+            // Camera is not available (in use or does not exist)
+            Log.e("CameraSurfaceView", e.getMessage());
+        }
+        return c; // returns null if camera is unavailable
+    }
+
+    /**
+     * 调用此函数将操作的摄像头切换成前置摄像头，可以预览摄像头内容，以及拍照。
+     */
+    public void openFrontCamera() {
+        if (mCamera != null) {
+            mCamera.release();      // 释放相机资源
+            mCamera = null;
+        }
+
+        mCamera = getCameraInstance(idOfFacingFront);
+
+        previewCamera();
+    }
+
+    /**
+     * 调用此函数将操作的摄像头切换成后置摄像头，可以预览摄像头内容，以及拍照。
+     */
+    public void openBackCamera() {
+        if (mCamera != null) {
+            mCamera.release();      // 释放相机资源
+            mCamera = null;
+        }
+
+        mCamera = getCameraInstance(idOfFacingBack);
+
+        previewCamera();
+    }
+
+    /**
+     * 检查手机设备是否有相机
+     * @param context
+     * @return
+     */
+    private boolean checkCameraHardware(Context context) {
+        if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)){
+            // this device has a camera
+            return true;
+        } else {
+            // no camera on this device
+            return false;
+        }
+    }
+
+    private int idOfFacingFront;    // 前置摄像头的ID
+    private int idOfFacingBack;     // 后置摄像头的IO
+
+    /**
+     * 获取前者摄像头和后置摄像头的ID，
+     * 前置摄像头ID的值保存到 {@link #idOfFacingFront}
+     * 后置摄像头ID的值保存到 {@link #idOfFacingBack}
+     */
+    private void getCameraId() {
+        for (int i = 0; i < Camera.getNumberOfCameras(); i++) {
+            Camera.CameraInfo info = new Camera.CameraInfo();
+            Camera.getCameraInfo(i, info);
+            if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                idOfFacingFront = i;
+            }
+            else if (info.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+                idOfFacingBack = i;
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////
 }
