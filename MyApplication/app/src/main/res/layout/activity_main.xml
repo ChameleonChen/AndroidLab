@@ -25,4 +25,13 @@
         android:layout_gravity="center"
         android:onClick="changeCamera"
         />
+
+    <ImageView
+        android:id="@+id/iv_picture_preview"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_gravity="center"
+        />
+
+
 </LinearLayout>

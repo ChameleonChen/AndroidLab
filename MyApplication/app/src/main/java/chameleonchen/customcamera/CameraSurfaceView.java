@@ -3,16 +3,29 @@ package chameleonchen.customcamera;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.hardware.Camera;
+import android.net.Uri;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 /**
  * Created by ChameleonChen on 15/3/25.
  */
 public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
+
+    private static final String LOG_TAG = "CameraSurfaceView";
 
     private SurfaceHolder mSurfaceHolder;
 
@@ -74,9 +87,13 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         mCamera.release();
+//        pictureData = null;     // 清空照片缓存区
     }
 
-    private void previewCamera() {
+    /**
+     * 预览摄像头内容
+     */
+    public void previewCamera() {
         try {
             mCamera.setPreviewDisplay(mSurfaceHolder);
             mCamera.setDisplayOrientation(getPreviewDegree((Activity) mContext));
@@ -216,5 +233,152 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////
+    private Camera.PictureCallback mPictureCallback;
+
+    public void setPictureCallback(Camera.PictureCallback callback) {
+        mPictureCallback = callback;
+    }
+
+    /**
+     * 拍照
+     */
+    public void takePicture() {
+        if (mPictureCallback == null) {
+            throw new NullPointerException();
+        }
+        mCamera.takePicture(null, null ,mPictureCallback);
+    }
+
+
 }
+
+//    /**
+//     * 在拍照获取的图片还没有保存之前，可以调用此函数获取图片的Bitmap格式。
+//     * @return
+//     * @throws java.lang.IllegalStateException 图片保存之后调用此函数；
+//     *              调用 setSavingWayAfterPictureToken(1) 后调用此函数。
+//     */
+//    public Bitmap getPictureBitmap() {
+//        if (pictureData == null) {
+//            throw new IllegalStateException("照片数据为空时不可调用 getPictureBitmap() 函数");
+//        }
+//
+//        return BitmapFactory.decodeByteArray(pictureData, 0, pictureData.length);
+//    }
+
+//    /** 是否在拍照成功之后立即保存图片 */
+//    private boolean isSavingImmediatelyAfterPictureToken = false;
+
+//    /**
+//     * 设置拍照之后照片的保存方式。默认是立即保存图片文件。
+//     * @param way 如果为1，表示拍照之后立即将文件保存起来；
+//     *            如果为2，表示拍照之后没有立即保存图片，而是等到调用{@link #savingPicture()}后保存图片。
+//     */
+//    public void setSavingWayAfterPictureToken(int way) {
+//        if (way == 1) {
+//            isSavingImmediatelyAfterPictureToken = true;
+//        }
+//        else if (way == 2) {
+//            isSavingImmediatelyAfterPictureToken = false;
+//        }
+//        else {
+//            throw new IllegalArgumentException();
+//        }
+//    }
+
+//    /** 照片数据的缓存区 */
+//    private byte[] pictureData;
+
+//    /**
+//     * 保存图片文件
+//     * @throws java.lang.IllegalStateException 调用 setSavingWayAfterPictureToken(1) 调用此函数；
+//     *              如果调用了该函数还抛出此异常就是拍照失败。
+//     */
+//    public void savingPicture() {
+//        File pictureFile = getOutputMediaFile(MEDIA_TYPE_IMAGE);
+//        if (pictureFile == null){
+//            throw new NullPointerException("保存图片文件名为空");
+//        }
+//        if (pictureData == null) {
+//            throw new IllegalStateException("图片文件为空或者文件已经保存，无需再调用 savingPicture() 函数");
+//        }
+//
+//        try {
+//            FileOutputStream fos = new FileOutputStream(pictureFile);
+//            fos.write(pictureData);
+//            fos.close();
+//            pictureData = null;
+//        } catch (FileNotFoundException e) {
+//            Log.d(LOG_TAG, "File not found: " + e.getMessage());
+//        } catch (IOException e) {
+//            Log.d(LOG_TAG, "Error accessing file: " + e.getMessage());
+//        }
+//    }
+
+//    private static final int MEDIA_TYPE_IMAGE = 1;
+//    private static final int MEDIA_TYPE_VIDEO = 2;
+//
+//    /** Create a file Uri for saving an image or video */
+//    private Uri getOutputMediaFileUri(int type){
+//        return Uri.fromFile(getOutputMediaFile(type));
+//    }
+//
+//    private String pictureFileDirectoryName;
+//
+//    /**
+//     * 在手机的{@link android.os.Environment#DIRECTORY_PICTURES} 目录下创建一个目录，保存拍照后的图片文件.
+//     * <pre>
+//     *     // 设置目录
+//     *     setPictureFileDirectoryName(CustomCamera);
+//     *     // 拍照
+//     *     takePicture();
+//     * </pre>
+//     * 这样子的话，照片文件保存到 /Pictures/CustomCamera/yyyyMMdd_HHmmss.jpg 中
+//     * @param pictureFileDirectoryName  创建的目录名
+//     */
+//    public void setPictureFileDirectoryName(String pictureFileDirectoryName) {
+//        this.pictureFileDirectoryName = pictureFileDirectoryName;
+//    }
+//
+//    /** Create a File for saving an image or video */
+//    private File getOutputMediaFile(int type){
+//        if (pictureFileDirectoryName == null) {
+//            throw new IllegalStateException("情输入保存照片的文件夹名");
+//        }
+//
+//        Log.i(LOG_TAG, pictureFileDirectoryName);
+//
+//        // To be safe, you should check that the SDCard is mounted
+//        // using Environment.getExternalStorageState() before doing this.
+//
+//        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
+//                Environment.DIRECTORY_PICTURES), pictureFileDirectoryName);
+//        // This location works best if you want the created images to be shared
+//        // between applications and persist after your app has been uninstalled.
+//
+//        // Create the storage directory if it does not exist
+//        if (! mediaStorageDir.exists()){
+//            if (! mediaStorageDir.mkdirs()){
+//                Log.d("MyCameraApp", "failed to create directory");
+//                return null;
+//            }
+//        }
+//
+//        // Create a media file name
+//        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+//        File mediaFile;
+//        if (type == MEDIA_TYPE_IMAGE){
+//            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+//                    "IMG_"+ timeStamp + ".jpg");
+//        } else if(type == MEDIA_TYPE_VIDEO) {
+//            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+//                    "VID_"+ timeStamp + ".mp4");
+//        } else {
+//            return null;
+//        }
+//
+//        return mediaFile;
+//    }
+
+    ////////////////////////////////////////////////////////////////////////
+
